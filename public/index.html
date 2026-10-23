@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Display On</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 420px; margin: 10vh auto; padding: 0 16px; text-align: center; }
+  input { font-size: 2rem; width: 100%; text-align: center; letter-spacing: .3em; padding: 8px; box-sizing: border-box; }
+  button { font-size: 1.2rem; padding: 12px 24px; margin-top: 16px; width: 100%; }
+  #status { margin-top: 16px; min-height: 1.5em; }
+</style>
+</head>
+<body>
+  <h1>Display On</h1>
+  <input id="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off">
+  <button id="send" disabled>Turn display on</button>
+  <div id="status"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// TODO: paste your Firebase web app config (Project settings -> Your apps -> Web app).
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const codeEl = document.getElementById("code");
+const sendEl = document.getElementById("send");
+const statusEl = document.getElementById("status");
+
+codeEl.value = localStorage.getItem("code") || "";
+const refresh = () => { sendEl.disabled = !/^\d{6}$/.test(codeEl.value); };
+codeEl.addEventListener("input", () => { codeEl.value = codeEl.value.replace(/\D/g, "").slice(0, 6); refresh(); });
+refresh();
+
+sendEl.addEventListener("click", async () => {
+  statusEl.textContent = "Sending…";
+  try {
+    if (!auth.currentUser) await signInAnonymously(auth);
+    await addDoc(collection(db, "commands"), {
+      deviceCode: codeEl.value,
+      action: "SCREEN_ON",
+      ts: serverTimestamp()
+    });
+    localStorage.setItem("code", codeEl.value);
+    statusEl.textContent = "Sent";
+  } catch (e) {
+    statusEl.textContent = "Error: " + e.message;
+  }
+});
+</script>
+</body>
+</html>
